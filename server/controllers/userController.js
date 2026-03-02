@@ -87,7 +87,7 @@ export const toggleLikeCreation = async (req, res) => {
       message = "Creation Liked";
     }
 
-    // ✅ Store as text[] array - matches YT version
+    //Store as text[] array - matches YT version
     const formattedArray = `{${updatedLikes.join(",")}}`;
 
     await sql`

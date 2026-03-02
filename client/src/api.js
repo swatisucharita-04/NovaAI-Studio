@@ -36,7 +36,7 @@ export const generateBlockTitle = (prompt, token) =>
 export const generateImage = (payload, token) =>
   API.post("/api/ai/text-to-image", payload, withAuth({}, token));
 
-// ✅ No Content-Type — axios auto-sets multipart/form-data with correct boundary
+//No Content-Type — axios auto-sets multipart/form-data with correct boundary
 export const removeImageBackground = (formData, token) =>
   API.post(
     "/api/ai/remove-background",

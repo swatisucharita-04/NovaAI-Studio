@@ -6,7 +6,7 @@ import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
 
-// ✅ Lazy wrapper — fixes ESM/CJS conflict with pdf-parse
+//Lazy wrapper — fixes ESM/CJS conflict with pdf-parse
 const pdfParse = (...args) => {
   const mod = require("pdf-parse");
   const fn = mod.default ?? mod;

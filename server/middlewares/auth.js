@@ -24,7 +24,7 @@ export const authMiddleware = async (req, res, next) => {
 
     req.userId = payload.sub;
 
-    // ✅ Get plan directly from Clerk token — no DB needed
+    //Get plan directly from Clerk token — no DB needed
     const rawPlan = payload.pla ?? "free";  // e.g. "u:premium" or "free"
     req.plan = rawPlan.includes("premium") ? "premium" : "free";
     req.free_usage = 0;
