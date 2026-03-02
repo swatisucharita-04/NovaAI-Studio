@@ -1,14 +1,41 @@
 import React, { useState } from "react"
-import { Eraser, Sparkles } from "lucide-react"
+import { Eraser, Sparkles, Loader2 } from "lucide-react"
+import { toast } from "react-hot-toast"
+import { useAuth } from '@clerk/clerk-react'
+import { removeImageBackground } from "../api.js"
 
 const RemoveBackground = () => {
   const [file, setFile] = useState(null)
   const [resultImage, setResultImage] = useState(null)
+  const [loading, setLoading] = useState(false)
 
-  const onSubmitHandler = (e) => {
+  const { getToken } = useAuth()
+
+  const onSubmitHandler = async (e) => {
     e.preventDefault()
-    // Dummy preview for now
-    setResultImage("https://images.unsplash.com/photo-1500530855697-b586d89ba3ee")
+    if (!file) {
+      toast.error("Please upload an image first")
+      return
+    }
+
+    setLoading(true)
+    try {
+      const token = await getToken()
+      console.log('remove background token', token)
+      const formData = new FormData()
+      formData.append("image", file)
+
+      const response = await removeImageBackground(formData, token)
+      if (response.data.success) {
+        setResultImage(response.data.content)
+      } else {
+        toast.error(response.data.message || "Failed to remove background")
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || "Failed to remove background")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -44,10 +71,15 @@ const RemoveBackground = () => {
 
           <button
             type="submit"
-            className="mt-6 w-full py-2 rounded-lg bg-linear-to-r from-orange-400 to-orange-500 text-white text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 transition"
+            disabled={loading}
+            className="mt-6 w-full py-2 rounded-lg bg-linear-to-r from-orange-400 to-orange-500 text-white text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 transition disabled:opacity-70"
           >
-            <Eraser className="w-4" />
-            Remove background
+            {loading ? (
+              <Loader2 className="w-4 animate-spin" />
+            ) : (
+              <Eraser className="w-4" />
+            )}
+            {loading ? 'Removing...' : 'Remove background'}
           </button>
 </form>
 

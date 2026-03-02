@@ -1,30 +1,42 @@
-import { clerkClient } from "@clerk/express";
+import { verifyToken } from "@clerk/backend";
+import sql from "../configs/db.js";
 
-// Middleware to check userId and hasPremiumPlan
-export const auth = async (req, res, next) => {
+export const authMiddleware = async (req, res, next) => {
   try {
-    const { userId, has } = await req.auth();
-    const hasPremiumPlan = await has({ plan: "premium" });
+    const authHeader = req.headers.authorization;
 
-    const user = await clerkClient.users.getUser(userId);
-
-    if (!hasPremiumPlan && user.privateMetadata.free_usage) {
-      req.free_usage = user.privateMetadata.free_usage;
-    } else {
-      await clerkClient.users.updateUserMetadata(userId, {
-        privateMetadata: {
-          free_usage: 0,
-        },
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized - No token",
       });
-
-      req.free_usage = 0;
     }
 
-    req.plan = hasPremiumPlan ? "premium" : "free";
+    const token = authHeader.split(" ")[1];
+
+    const payload = await verifyToken(token, {
+      secretKey: process.env.CLERK_SECRET_KEY,
+      authorizedParties: [
+        "http://localhost:5173",
+        "http://localhost:3000",
+      ],
+    });
+
+    req.userId = payload.sub;
+
+    // ✅ Get plan directly from Clerk token — no DB needed
+    const rawPlan = payload.pla ?? "free";  // e.g. "u:premium" or "free"
+    req.plan = rawPlan.includes("premium") ? "premium" : "free";
+    req.free_usage = 0;
+
+    console.log("User plan:", req.plan); // should print "premium"
 
     next();
   } catch (error) {
-    console.error(error);
-    return res.status(401).json({ message: "Unauthorized" });
+    console.error("Auth error:", error.message);
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized",
+    });
   }
 };

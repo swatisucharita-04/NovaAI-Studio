@@ -1,5 +1,8 @@
 import React, { useState } from 'react'
-import { Image, Sparkles } from 'lucide-react'
+import { Image, Sparkles, Loader2 } from 'lucide-react'
+import { toast } from 'react-hot-toast'
+import { useAuth } from '@clerk/clerk-react'
+import { generateImage } from '../api.js'
 
 const stylesList = [
   'Realistic',
@@ -15,13 +18,34 @@ const stylesList = [
 const GenerateImages = () => {
   const [prompt, setPrompt] = useState('')
   const [style, setStyle] = useState('Fantasy style')
-  const [imageUrl, setImageUrl] = useState(null)
+  const [content, setContent] = useState('')
   const [publish, setPublish] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  const onSubmitHandler = (e) => {
+  const { getToken } = useAuth()
+
+  const onSubmitHandler = async (e) => {
     e.preventDefault()
-    // Dummy preview (replace later with API)
-    setImageUrl('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee')
+    if (!prompt.trim()) {
+      toast.error('Please enter a prompt')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const token = await getToken()
+      const fullPrompt = `Generate an image of ${prompt.trim()} in ${style}`
+      const response = await generateImage({ prompt: fullPrompt, publish }, token)
+      if (response.data.success) {
+        setContent(response.data.content)
+      } else {
+        toast.error(response.data.message || 'Failed to generate image')
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || 'Failed to generate image')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -91,23 +115,28 @@ const GenerateImages = () => {
           {/* Generate Button */}
           <button
             type="submit"
-            className="mt-4 w-full py-2 rounded-lg bg-linear-to-r from-green-600 to-green-400 text-white text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 transition"
+            disabled={loading}
+            className="mt-4 w-full py-2 rounded-lg bg-linear-to-r from-green-600 to-green-400 text-white text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 transition disabled:opacity-70"
           >
-            <Image className="w-4" />
-            Generate Image
+            {loading ? (
+              <Loader2 className="w-4 animate-spin" />
+            ) : (
+              <Image className="w-4" />
+            )}
+            {loading ? 'Generating...' : 'Generate Image'}
           </button>
         </form>
 
         {/* RIGHT CARD */}
         <div className="bg-white rounded-xl border border-gray-200 p-6 flex items-center justify-center">
-          {!imageUrl ? (
+          {!content ? (
             <div className="flex flex-col items-center text-gray-400 text-sm">
               <Image className="w-10 h-10 mb-2 opacity-40" />
               Describe an image and click “Generate Image” to get started
             </div>
           ) : (
             <img
-              src={imageUrl}
+              src={content}
               alt="Generated"
               className="rounded-lg max-h-87.5 object-contain"
             />

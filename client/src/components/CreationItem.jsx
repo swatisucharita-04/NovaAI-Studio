@@ -5,8 +5,8 @@ import remarkGfm from 'remark-gfm'
 const CreationItem = ({ item }) => {
   const [expanded, setExpanded] = useState(false)
 
-  const date = item.createdAt
-    ? new Date(item.createdAt).toLocaleDateString('en-US')
+  const date = item.created_at
+    ? new Date(item.created_at).toLocaleDateString('en-US')
     : '—'
 
   return (

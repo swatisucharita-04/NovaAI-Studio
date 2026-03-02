@@ -1,7 +1,13 @@
 import React, { useState } from 'react'
-import { Hash, Sparkles } from 'lucide-react'
+import { Hash, Sparkles, Loader2 } from 'lucide-react'
+import axios from 'axios'
+import { toast } from 'react-hot-toast'
+import Markdown from 'react-markdown'
+import { useAuth } from '@clerk/clerk-react'
+import { generateBlockTitle } from '../api.js'
 
 const BlogTitles = () => {
+  const { getToken } = useAuth()
   const categories = [
     'General',
     'Technology',
@@ -15,19 +21,56 @@ const BlogTitles = () => {
 
   const [keyword, setKeyword] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('General')
-  const [titles, setTitles] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [content, setContent] = useState('')
 
-  const onSubmitHandler = (e) => {
+  const onSubmitHandler = async (e) => {
     e.preventDefault()
-    if (!keyword) return
+    if (!keyword.trim()) {
+      toast.error('Please enter a keyword')
+      return
+    }
 
-    setTitles([
-      `10 ${keyword} Trends in ${selectedCategory}`,
-      `How ${keyword} is Changing ${selectedCategory}`,
-      `Beginner’s Guide to ${keyword}`,
-      `Top ${keyword} Ideas for ${selectedCategory}`,
-      `${keyword}: What You Need to Know`,
-    ])
+    setLoading(true)
+    try {
+      // strict prompt with explicit markdown format
+      const prompt = `
+Generate blog titles for the keyword "${keyword.trim()}" in the category "${selectedCategory}".
+
+Return strictly in this exact markdown format:
+
+## Beginner-Friendly
+- Title 1
+- Title 2
+- Title 3
+
+## Intermediate
+- Title 1
+- Title 2
+- Title 3
+
+## Advanced
+- Title 1
+- Title 2
+- Title 3
+
+Do not add any explanation. Only return markdown exactly like above.
+`;
+      const token = await getToken()
+      const response = await generateBlockTitle(prompt, token)
+      console.log('block title raw response', response.data);
+      if (response.data.success) {
+        const result = response.data.content || '';
+        setContent(result);
+        toast.success('Title generated successfully!')
+      } else {
+        toast.error(response.data.message || 'Failed to generate title')
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || 'Failed to generate title')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -55,7 +98,8 @@ const BlogTitles = () => {
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             placeholder="The future of artificial intelligence"
-            className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500"
+            disabled={loading}
+            className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
           />
 
           {/* Category */}
@@ -82,10 +126,15 @@ const BlogTitles = () => {
           {/* Button */}
           <button
             type="submit"
-            className="mt-6 w-full py-2 rounded-lg bg-linear-to-r from-fuchsia-500 to-indigo-500 text-white text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 transition"
+            disabled={loading}
+            className="mt-6 w-full py-2 rounded-lg bg-linear-to-r from-fuchsia-500 to-indigo-500 text-white text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 transition disabled:opacity-70"
           >
-            <Hash className="w-4" />
-            Generate title
+            {loading ? (
+              <Loader2 className="w-4 animate-spin" />
+            ) : (
+              <Hash className="w-4" />
+            )}
+            {loading ? 'Generating...' : 'Generate title'}
           </button>
         </form>
 
@@ -98,22 +147,15 @@ const BlogTitles = () => {
             </h2>
           </div>
 
-          {titles.length === 0 ? (
+          {!content ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400 text-sm">
               <Hash className="w-10 h-10 mb-2 opacity-40" />
-              Enter keywords and click “Generate Titles” to get started
+              Enter keywords and click "Generate Title" to get started
             </div>
           ) : (
-            <ul className="space-y-3 text-sm text-gray-700">
-              {titles.map((title, i) => (
-                <li
-                  key={i}
-                  className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                >
-                  {title}
-                </li>
-              ))}
-            </ul>
+            <div className="mt-4 p-3 text-sm text-slate-600 text-left prose prose-sm .reset-tw">
+              <Markdown>{content}</Markdown>
+            </div>
           )}
         </div>
 
